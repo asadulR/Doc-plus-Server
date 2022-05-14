@@ -22,13 +22,53 @@ async function run(){
         await client.connect();
         // console.log('database conected')
         const servicesCollection = client.db('doc+').collection("services");
+        const bookingCollection = client.db('doc+').collection("bookings");
 
         app.get('/services', async(req, res) => {
             const query = {};
             const cursor = servicesCollection.find(query);
             const services = await cursor.toArray();
             res.send(services);
+        });
+
+        app.get('/available', async(req, res) => {
+          const date = req.query.date;
+          // get all services
+          const services = await servicesCollection.find().toArray();
+
+          // get the booking of the day
+          const query = {date: date};
+
+          const bookings = await bookingCollection.find(query).toArray();
+
+          //  for each service, find bookings for that service
+          services.forEach(service => {
+            const serviceBookings = bookings.filter(b => b.treatment === service.name);
+            const booked = serviceBookings.map(s => s.timeSlot);
+            // service.booked = booked;
+
+            const available = service.slots.filter(s => !booked.includes(s));
+            service.available = available;
+          })
+
+          res.send(services);
         })
+
+        app.post('/booking', async(req, res) => {
+          const booking = req.body;
+          const query = {treatment: booking.treatment, date: booking.date, patientEmail: booking.patientEmail}
+          // console.log(query)
+          const exists = await bookingCollection.findOne(query);
+          if(exists){
+            return res.send({success: false, booking: exists})
+          }
+          const result = await bookingCollection.insertOne(booking);
+
+          return res.send({success: true, result});
+        })
+
+
+
     }
     finally{
 
@@ -36,7 +76,6 @@ async function run(){
 }
 
 run().catch(console.dir);
-
 
 
 
