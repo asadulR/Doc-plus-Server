@@ -23,6 +23,7 @@ async function run(){
         // console.log('database conected')
         const servicesCollection = client.db('doc+').collection("services");
         const bookingCollection = client.db('doc+').collection("bookings");
+        const usersCollection = client.db('doc+').collection("users");
 
         app.get('/services', async(req, res) => {
             const query = {};
@@ -48,10 +49,36 @@ async function run(){
             // service.booked = booked;
 
             const available = service.slots.filter(s => !booked.includes(s));
-            service.available = available;
+            // service.available = available;
+            service.slots = available;
           })
 
           res.send(services);
+        });
+
+
+        // User collection 
+        app.put('/users/:email', async(req, res) => {
+          const email = req.params.email;
+          const user = req.body;
+          const filter = { email: email };
+          const options = { upsert: true };
+
+
+          const updateDoc = {
+            $set: user
+          };
+
+          const result = await usersCollection.updateOne(filter, updateDoc, options);
+          res.send(result);
+        });
+
+        app.get('/booking', async(req, res) =>{
+          const patient = req.query.patient;
+          const query = {patientEmail: patient};
+          // console.log(query)
+          const bookings = await bookingCollection.find(query).toArray();
+          res.send(bookings);
         })
 
         app.post('/booking', async(req, res) => {
