@@ -73,6 +73,30 @@ async function run() {
 
       res.send(services);
     });
+    //  Get users
+    app.get('/users', vrifyJWT, async (req, res) => {
+      const users = await usersCollection.find().toArray();
+      res.send(users);
+    })
+
+    app.put('/users/admin/:email', vrifyJWT, async (req, res) => {
+      const email = req.params.email;
+      const requester = rwq.decoded.email;
+      const rquesterAccount = await usersCollection.findOne({ email: requester });
+
+      if (rquesterAccount.role === 'admin') {
+        const filter = { email: email };
+
+        const updateDoc = {
+          $set: { role: 'admin' }
+        };
+        const result = await usersCollection.updateOne(filter, updateDoc);
+        res.send(result);
+      }else{
+        res.status(403).send({message: 'forbidden'})
+      }
+
+    });
 
 
     // User collection 
@@ -84,7 +108,7 @@ async function run() {
 
 
       const updateDoc = {
-        $set: user
+        $set: user,
       };
 
       const result = await usersCollection.updateOne(filter, updateDoc, options);
@@ -101,8 +125,8 @@ async function run() {
         // console.log(query)
         const bookings = await bookingCollection.find(query).toArray();
         return res.send(bookings);
-      }else{
-        return res.status(403).send({message: 'Forbidden Access'})
+      } else {
+        return res.status(403).send({ message: 'Forbidden Access' })
       }
 
     });
