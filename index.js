@@ -42,6 +42,21 @@ async function run() {
     const servicesCollection = client.db('doc+').collection("services");
     const bookingCollection = client.db('doc+').collection("bookings");
     const usersCollection = client.db('doc+').collection("users");
+    const doctorsCollection = client.db('doc+').collection("doctors");
+    
+    const verifyAdmin = async(req, res, next) => {
+      const requester = req.decoded.email;
+      const rquesterAccount = await usersCollection.findOne({ email: requester });
+
+      if (rquesterAccount.role === 'admin') {
+        next();
+
+      }else{
+        res.status(403).send({message: 'forbidden'});
+      }
+    }
+
+
 
     app.get('/services', async (req, res) => {
       const query = {};
@@ -79,24 +94,15 @@ async function run() {
       res.send(users);
     })
 
-    app.put('/users/admin/:email', vrifyJWT, async (req, res) => {
+    app.put('/users/admin/:email', vrifyJWT, verifyAdmin, async (req, res) => {
       const email = req.params.email;
-      const requester = rwq.decoded.email;
-      const rquesterAccount = await usersCollection.findOne({ email: requester });
-
-      if (rquesterAccount.role === 'admin') {
-        const filter = { email: email };
-
-        const updateDoc = {
-          $set: { role: 'admin' }
-        };
-        const result = await usersCollection.updateOne(filter, updateDoc);
-        res.send(result);
-      }else{
-        res.status(403).send({message: 'forbidden'})
-      }
-
-    });
+      const filter = { email: email };
+      const updateDoc = {
+        $set: { role: 'admin' },
+      };
+      const result = await usersCollection.updateOne(filter, updateDoc);
+      res.send(result);
+    })
 
 
     // User collection 
@@ -143,6 +149,34 @@ async function run() {
 
       return res.send({ success: true, result });
     })
+
+
+    //  post doctor
+
+    app.post('/doctor', vrifyJWT, async(req, res) => {
+      const doctor = req.body;
+      const result = await doctorsCollection.insertOne(doctor);
+      res.send(result);
+    })
+
+    //  load all doctors
+    app.get('/doctors', vrifyJWT, async(req, res) => {
+      const doctors = await doctorsCollection.find().toArray();
+      res.send(doctors);
+    });
+
+    app.delete('/doctors/:email', vrifyJWT, async(req, res) => {
+      const email = req.params.email;
+      const query = {email : email};
+      const result = await doctorsCollection.deleteOne(query);
+      res.send(result);
+    })
+
+
+
+
+
+
 
 
 
